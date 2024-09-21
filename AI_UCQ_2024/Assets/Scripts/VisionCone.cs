@@ -5,23 +5,29 @@ using DebugManager;
 
 public class VisionCone : MonoBehaviour
 {
-    public float viewRadius = 5f; // Radio del cono de visión
+    //Ángulo y radio de visión
+    public float viewRadius = 5f;
     [Range(0, 360)]
-    public float viewAngle = 90f; // Ángulo del cono de visión
+    public float viewAngle = 90f;
 
-    public Transform target; // El GameObject que queremos detectar
+    public Transform target;
 
-    private bool targetDetected = false; // Variable que almacena si el objetivo está dentro del cono de visión
-    private Color coneColor = Color.green; // Color del cono (verde por defecto)
+    public bool targetDetected = false;
+    private Color coneColor = Color.green;
 
     private void Update()
     {
         DetectTargetInView();
+
+        if (targetDetected)
+        {
+            RotateTowardsTarget();
+        }
     }
 
     void DetectTargetInView()
     {
-        targetDetected = false; // Reiniciamos la detección
+        targetDetected = false;
 
         // Verificamos si el target está dentro del radio de visión
         Vector3 directionToTarget = (target.position - transform.position).normalized;
@@ -31,8 +37,8 @@ public class VisionCone : MonoBehaviour
             float angleBetweenAgentAndTarget = Vector3.Angle(transform.forward, directionToTarget);
             if (angleBetweenAgentAndTarget < viewAngle / 2)
             {
-                targetDetected = true; // El objetivo está dentro del cono de visión
-                coneColor = Color.red; // Cambiamos el color a rojo
+                targetDetected = true;
+                coneColor = Color.red;
                 Debug.Log("Target Detectado: " + target.name);
             }
         }
@@ -44,21 +50,30 @@ public class VisionCone : MonoBehaviour
         }
     }
 
-    // Método auxiliar para visualizar el cono de visión en la escena de Unity
+    void RotateTowardsTarget()
+    {
+        // Calculamos la dirección hacia el objetivo
+        Vector3 directionToTarget = (target.position - transform.position).normalized;
+
+        // Calculamos la rotación deseada
+        Quaternion lookRotation = Quaternion.LookRotation(directionToTarget);
+
+        // Interpolamos la rotación para que sea más suave
+        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * 5.0f);
+    }
+
     private void OnDrawGizmos()
     {
-        Gizmos.color = coneColor; // El color del cono depende de la detección
+        Gizmos.color = coneColor;
 
-        // Dibujamos el cono de visión como un sector circular
         DrawVisionCone();
     }
 
-    // Dibuja el cono de visión
     private void DrawVisionCone()
     {
         // Cono de visión
         Vector3 forward = transform.forward * viewRadius;
-        float step = viewAngle / 20; // Aumentar el número de pasos para suavizar el cono
+        float step = viewAngle / 10;
         Vector3 start = Quaternion.Euler(0, -viewAngle / 2, 0) * forward;
 
         for (float i = -viewAngle / 2; i <= viewAngle / 2; i += step)
