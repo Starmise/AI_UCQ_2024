@@ -12,7 +12,7 @@ public class SimpleMovement : MonoBehaviour
     [SerializeField] 
     protected float maxAcceleration = 1.0f;
 
-    protected Vector3 velocity = Vector3.zero;
+    public Vector3 velocity = Vector3.zero;
 
     public GameObject targetGameObject = null;
 
@@ -47,22 +47,27 @@ public class SimpleMovement : MonoBehaviour
         // Vector3 PosToTarget = -PuntaMenosCola(targetGameObject.transform.position, transform.position);  // FLEE
         //velocity += PosToTarget.normalized * maxAcceleration * Time.deltaTime;
 
+        // Hay que pedirle al targetGameObject que nos dé acceso a su Velocity, la cual está en el script SimpleMovement
         Vector3 currentVelocity = targetGameObject.GetComponent<SimpleMovement>().velocity;
 
         PursuitTimePrediction = CalculatePredictedTime(maxSpeed, transform.position, targetGameObject.transform.position);
 
+        // Primero predigo dónde va a estar mi objetivo
         Vector3 PredictedPosition =
             PredictPosition(targetGameObject.transform.position, currentVelocity, PursuitTimePrediction);
 
-        Vector3 PosToTarget = PuntaMenosCola(PredictedPosition, transform.position);
+        // Hago seek hacia la posición predicha.
+        Vector3 PosToTarget = PuntaMenosCola(PredictedPosition, transform.position); // SEEK
 
+        velocity += PosToTarget.normalized * maxAcceleration * Time.deltaTime;
+
+        // Queremos que lo más rápido que pueda ir sea a MaxSpeed unidades por segundo. Sin importar qué tan grande sea la
+        // flecha de PosToTarget.
+        // Como la magnitud y la dirección de un vector se pueden separar, únicamente necesitamos limitar la magnitud para
+        // que no sobrepase el valor de MaxSpeed.
         velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
 
         transform.position += velocity * Time.deltaTime;
-
-        //Que la magnitus de la velocidad no sobrepase MaxSpeed
-        //velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
-        //transform.position += velocity * Time.deltaTime;
     }
 
     Vector3 PredictPosition(Vector3 InitialPosition, Vector3 Velocity, float TimePrediction)
