@@ -19,6 +19,8 @@ public class SimpleMovement : MonoBehaviour
     // Qué tanto tiempo a futuro (o pasado, si es negativa) va a predecir el movimiento de su target.
     protected float PursuitTimePrediction = 1.0f;
 
+    public VisionCone visionCone;
+
     public Vector3 PuntaMenosCola(Vector3 punta, Vector3 cola)
     {
         float x = punta.x - cola.x;
@@ -32,6 +34,13 @@ public class SimpleMovement : MonoBehaviour
     {
         Debug.Log(message: "Se está ejecutando Start." + gameObject.name);
         //debugManagerRef = GameObject.FindAnyObjectByType<DebugManager>();
+
+        // Asegurar de que VisionCone esté asignado
+        if (visionCone == null)
+        {
+            visionCone = GetComponentInChildren<VisionCone>();
+        }
+
         return;
     }
 
@@ -61,13 +70,42 @@ public class SimpleMovement : MonoBehaviour
 
         velocity += PosToTarget.normalized * maxAcceleration * Time.deltaTime;
 
-        // Queremos que lo más rápido que pueda ir sea a MaxSpeed unidades por segundo. Sin importar qué tan grande sea la
-        // flecha de PosToTarget.
-        // Como la magnitud y la dirección de un vector se pueden separar, únicamente necesitamos limitar la magnitud para
-        // que no sobrepase el valor de MaxSpeed.
-        velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+        if (visionCone.targetDetected)
+        {
+            // Si el jugador está dentro del cono de visión, mueve al enemigo
+            PerseguirJugador();
+            Debug.Log("Target detectado. Empezando movimiento.");
+        }
+        else
+        {
+            // Si no detecta al jugador, frenar el enemigo o hacer otra acción
+            DetenerMovimiento();
+            Debug.Log("Target no detectado. Deteniendo movimiento.");
+        }
 
-        transform.position += velocity * Time.deltaTime;
+        //// Queremos que lo más rápido que pueda ir sea a MaxSpeed unidades por segundo. Sin importar qué tan grande sea la
+        //// flecha de PosToTarget.
+        //// Como la magnitud y la dirección de un vector se pueden separar, únicamente necesitamos limitar la magnitud para
+        //// que no sobrepase el valor de MaxSpeed.
+        //velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+        //transform.position += velocity * Time.deltaTime;
+    }
+
+    void PerseguirJugador()
+    {
+        if (targetGameObject != null)
+        {
+            Vector3 PosToTarget = PuntaMenosCola(targetGameObject.transform.position, transform.position);
+            
+            velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+
+            transform.position += velocity * Time.deltaTime;
+        }
+    }
+
+    void DetenerMovimiento()
+    {
+        velocity = Vector3.zero;
     }
 
     Vector3 PredictPosition(Vector3 InitialPosition, Vector3 Velocity, float TimePrediction)

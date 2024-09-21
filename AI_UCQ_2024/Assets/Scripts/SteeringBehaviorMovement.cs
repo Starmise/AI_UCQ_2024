@@ -15,7 +15,6 @@ public class SteeringBehaviorMovement : SimpleMovement
 
     public Vector3 SpherePos = Vector3.zero;
     public float SphereRadius = 1.0f;
-
     // Para obtener la distancia entre dos puntos en el espacio, simplemente hacemos
     // Punta menos Cola, pero nos quedamos únicamente con la magnitud de dicho vector.
 
@@ -53,22 +52,7 @@ public class SteeringBehaviorMovement : SimpleMovement
 
     void Update()
     {
-        if (Utility.IsInsideRadius(targetGameObject.transform.position, transform.position, SphereRadius))
-        {
-            // Debug.Log("Sí está dentro de la esfera");
-        }
-        else
-        {
-            // Debug.Log("Está fuera de la esfera.");
-        }
-
-
-        Vector3 PosToTarget = PuntaMenosCola(targetGameObject.transform.position, transform.position); // SEEK
-
-        // Force o Acceleration no importan porque no vamos a modificar la masa.
-        rb.AddForce(PosToTarget.normalized * maxAcceleration, ForceMode.Force);
-
-        rb.velocity = Vector3.ClampMagnitude(rb.velocity, maxSpeed);
+        
     }
 
     void OnDrawGizmos()
