@@ -11,5 +11,7 @@ namespace DebugManager
         public static bool DesiredVectors = true;
         public static bool DetectionSphere = true;
 
+        public static bool ShowVisionCone = true;
+
     }
 }
