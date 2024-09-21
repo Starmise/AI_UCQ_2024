@@ -1,4 +1,7 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using DebugManager;
 
 public class VisionCone : MonoBehaviour
 {
@@ -8,6 +11,9 @@ public class VisionCone : MonoBehaviour
 
     public Transform target; // El GameObject que queremos detectar
 
+    private bool targetDetected = false; // Variable que almacena si el objetivo está dentro del cono de visión
+    private Color coneColor = Color.green; // Color del cono (verde por defecto)
+
     private void Update()
     {
         DetectTargetInView();
@@ -15,6 +21,8 @@ public class VisionCone : MonoBehaviour
 
     void DetectTargetInView()
     {
+        targetDetected = false; // Reiniciamos la detección
+
         // Verificamos si el target está dentro del radio de visión
         Vector3 directionToTarget = (target.position - transform.position).normalized;
         if (Vector3.Distance(transform.position, target.position) < viewRadius)
@@ -23,15 +31,23 @@ public class VisionCone : MonoBehaviour
             float angleBetweenAgentAndTarget = Vector3.Angle(transform.forward, directionToTarget);
             if (angleBetweenAgentAndTarget < viewAngle / 2)
             {
+                targetDetected = true; // El objetivo está dentro del cono de visión
+                coneColor = Color.red; // Cambiamos el color a rojo
                 Debug.Log("Target Detectado: " + target.name);
             }
+        }
+
+        // Si no detectamos el target, el color vuelve a verde
+        if (!targetDetected)
+        {
+            coneColor = Color.green;
         }
     }
 
     // Método auxiliar para visualizar el cono de visión en la escena de Unity
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.yellow;
+        Gizmos.color = coneColor; // El color del cono depende de la detección
 
         // Dibujamos el cono de visión como un sector circular
         DrawVisionCone();
@@ -40,23 +56,22 @@ public class VisionCone : MonoBehaviour
     // Dibuja el cono de visión
     private void DrawVisionCone()
     {
-        // Dibujamos una línea desde el agente hacia el target (solo para depuración)
-        if (target != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine(transform.position, target.position);
-        }
-
         // Cono de visión
         Vector3 forward = transform.forward * viewRadius;
         float step = viewAngle / 20; // Aumentar el número de pasos para suavizar el cono
         Vector3 start = Quaternion.Euler(0, -viewAngle / 2, 0) * forward;
 
-        Gizmos.color = Color.yellow;
         for (float i = -viewAngle / 2; i <= viewAngle / 2; i += step)
         {
             Vector3 direction = Quaternion.Euler(0, i, 0) * forward;
             Gizmos.DrawLine(transform.position, transform.position + direction);
+        }
+
+        // Opción: dibujamos una línea hacia el target solo para depuración (puede eliminarse)
+        if (target != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(transform.position, target.position);
         }
     }
 }
