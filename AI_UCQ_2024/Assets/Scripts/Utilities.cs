@@ -20,14 +20,10 @@ namespace Utilities
             {
                 return true;
             }
-            // de lo contrario, está fuera de la esfera
             else
             {
                 return false;
             }
         }
-
-        // Función de Cono de Visión.
-
     }
 }

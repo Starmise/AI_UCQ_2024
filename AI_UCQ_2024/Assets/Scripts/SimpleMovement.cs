@@ -21,6 +21,16 @@ public class SimpleMovement : MonoBehaviour
 
     public VisionCone visionCone;
 
+    [SerializeField]
+    protected float ObstacleForceToApply = 1.0f;
+
+    protected Vector3 ExternalForces = Vector3.zero;
+
+    public void AddExternalForce(Vector3 ExternalForce)
+    {
+        ExternalForces += ExternalForce;
+    }
+
     public Vector3 PuntaMenosCola(Vector3 punta, Vector3 cola)
     {
         float x = punta.x - cola.x;
@@ -44,6 +54,40 @@ public class SimpleMovement : MonoBehaviour
         return;
     }
 
+    void OnTriggerStay(Collider other)
+    {
+
+        // Si esta colisión es contra alguien que NO es un obstáculo (no tiene la Layer Obstacle),
+        // entonces, no hagas nada.
+        if (other.gameObject.layer != LayerMask.NameToLayer("Obstacle"))
+        {
+            return;
+        }
+
+        // Si detectamos que un agente está dentro de nuestro radio/área de activación,
+        // calculamos un vector con origen en la posición de este objeto, y cuyo fin es la posición de ese agente
+        // NOTA: Esta resta es hacia el CENTRO del agente.
+        Vector3 OriginToAgent = transform.position - other.transform.position;
+
+        Debug.Log("Entré a OnTriggerStay de SimpleMovement con: " + other.gameObject.name);
+
+        float distance = OriginToAgent.magnitude;
+
+        SphereCollider collider = GetComponent<SphereCollider>();
+        if (collider == null)
+        {
+            return;
+        }
+
+        // collider.radius nos da el radio en espacio local, nosotros lo necesitamos
+        // escalado por las escalas de sus padres en la Jerarquía de la escena. 
+        float obstacleColliderRadius = collider.radius;
+
+        float calculatedForce = ObstacleForceToApply * (1.0f - distance / obstacleColliderRadius);
+
+        AddExternalForce(OriginToAgent.normalized * calculatedForce);
+    }
+
     void Update()
     {
         //Debug.Log("Upadate número: " + ContadorCuadros);
@@ -56,21 +100,34 @@ public class SimpleMovement : MonoBehaviour
         // Vector3 PosToTarget = -PuntaMenosCola(targetGameObject.transform.position, transform.position);  // FLEE
         //velocity += PosToTarget.normalized * maxAcceleration * Time.deltaTime;
 
-        // Hay que pedirle al targetGameObject que nos dé acceso a su Velocity, la cual está en el script SimpleMovement
+        if (targetGameObject == null)
+        {
+            return;
+        }
+
         Vector3 currentVelocity = targetGameObject.GetComponent<SimpleMovement>().velocity;
 
         PursuitTimePrediction = CalculatePredictedTime(maxSpeed, transform.position, targetGameObject.transform.position);
 
-        // Primero predigo dónde va a estar mi objetivo
         Vector3 PredictedPosition =
             PredictPosition(targetGameObject.transform.position, currentVelocity, PursuitTimePrediction);
 
-        // Hago seek hacia la posición predicha.
         Vector3 PosToTarget = PuntaMenosCola(PredictedPosition, transform.position); // SEEK
+
+        PosToTarget += ExternalForces;
 
         velocity += PosToTarget.normalized * maxAcceleration * Time.deltaTime;
 
-        if (visionCone.targetDetected)
+        // Queremos que lo más rápido que pueda ir sea a MaxSpeed unidades por segundo.
+        // Limitamos la magnitud para que no sobrepase el valor de MaxSpeed.
+        velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+
+        transform.position += velocity * Time.deltaTime;
+
+        // Hay que resetearlas cada frame al final del cuadro, si no se quitará antes de usarla.
+        ExternalForces = Vector3.zero;
+
+        /*if (visionCone.targetDetected)
         {
             // Si el jugador está dentro del cono de visión, mueve al enemigo
             PerseguirJugador();
@@ -81,17 +138,10 @@ public class SimpleMovement : MonoBehaviour
             // Si no detecta al jugador, frenar el enemigo o hacer otra acción
             DetenerMovimiento();
             Debug.Log("Target no detectado. Deteniendo movimiento.");
-        }
-
-        //// Queremos que lo más rápido que pueda ir sea a MaxSpeed unidades por segundo. Sin importar qué tan grande sea la
-        //// flecha de PosToTarget.
-        //// Como la magnitud y la dirección de un vector se pueden separar, únicamente necesitamos limitar la magnitud para
-        //// que no sobrepase el valor de MaxSpeed.
-        //velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
-        //transform.position += velocity * Time.deltaTime;
+        }*/
     }
 
-    void PerseguirJugador()
+void PerseguirJugador()
     {
         if (targetGameObject != null)
         {
@@ -113,8 +163,6 @@ public class SimpleMovement : MonoBehaviour
         // Con base en la Velocity dada vamos a calcular en qué posición estará nuestro objeto con posición InitialPosition,
         // tras una cantidad X de tiempo (TimePrediction).
         return InitialPosition + Velocity * TimePrediction;
-
-        // nosotros empezamos
     }
 
     float CalculatePredictedTime(float MaxSpeed, Vector3 InitialPosition, Vector3 TargetPosition)

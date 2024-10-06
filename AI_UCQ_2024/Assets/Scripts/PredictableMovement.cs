@@ -9,7 +9,8 @@ public class PredictableMovement : SimpleMovement
 
     private int CurrentPatrolPoint = 0;
 
-    [SerializeField] private float PatrolPointToleranceRadius;
+    [SerializeField] 
+    private float PatrolPointToleranceRadius;
 
     // Start is called before the first frame update
     void Start()

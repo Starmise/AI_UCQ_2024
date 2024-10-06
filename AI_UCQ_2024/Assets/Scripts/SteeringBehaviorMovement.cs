@@ -52,7 +52,13 @@ public class SteeringBehaviorMovement : SimpleMovement
 
     void Update()
     {
-        
+        Vector3 PosToTarget = PuntaMenosCola(targetGameObject.transform.position, transform.position); // SEEK
+
+        // Force o Acceleration nos dan lo mismo ahorita porque no vamos a modificar la masa.
+        rb.AddForce(PosToTarget.normalized * maxAcceleration, ForceMode.Force);
+
+        rb.velocity = Vector3.ClampMagnitude(rb.velocity, maxSpeed);
+
     }
 
     void OnDrawGizmos()
