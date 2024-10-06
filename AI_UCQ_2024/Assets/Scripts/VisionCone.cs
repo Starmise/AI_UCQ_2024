@@ -64,9 +64,12 @@ public class VisionCone : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        Gizmos.color = coneColor;
-
-        DrawVisionCone();
+        // Verificamos si se debe mostrar el cono de visión basado en la variable DebugManager.DebugGizmoManager.ShowVisionCone
+        if (DebugManager.DebugGizmoManager.ShowVisionCone)
+        {
+            Gizmos.color = coneColor;
+            DrawVisionCone();
+        }
     }
 
     private void DrawVisionCone()
@@ -90,3 +93,8 @@ public class VisionCone : MonoBehaviour
         }
     }
 }
+
+//--------REFERENCIAS---------
+//https://www.youtube.com/watch?v=lV47ED8h61k&t=1s
+//https://docs.unity3d.com/ScriptReference/Quaternion.LookRotation.html
+//https://docs.unity3d.com/ScriptReference/Quaternion.RotateTowards.html
