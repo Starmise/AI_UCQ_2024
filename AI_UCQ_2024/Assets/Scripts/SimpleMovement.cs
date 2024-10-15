@@ -2,14 +2,42 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using DebugManager;
+using System;
+
+public enum WeaponType
+{
+    Weak,
+    Normal,
+    Hielo,
+    Fuego,
+    Trueno
+}
+public enum EnemyState
+{
+    Idle,
+    Alert, // sospechoso/investigando/etc.
+    Attack // ya te detectó y te ataca.
+}
+
+public enum ExampleMessageBits
+{
+    ClientOrServer = 1, // [0 0 0 0 0 0 0 X ]
+    PremiumUser = 2, // [0 0 0 0 0 0 X 0 ]
+    EstáVolando = 4, // [0 0 0 0 0 X 0 0 ]
+    OtraCosa = 8, // [0 0 0 0 X 0 0 0 ]
+    OtraMas = 16,
+}
+public enum Layers
+{
+    Default = 1,
+    TransparentFX = 2,
+}
 
 public class SimpleMovement : MonoBehaviour
 {
-    [SerializeField] 
-    private int ContadorCuadros = 0;
     [SerializeField]
     protected float maxSpeed = 5;
-    [SerializeField] 
+    [SerializeField]
     protected float maxAcceleration = 1.0f;
 
     public Vector3 velocity = Vector3.zero;
@@ -25,6 +53,11 @@ public class SimpleMovement : MonoBehaviour
     protected float ObstacleForceToApply = 1.0f;
 
     protected Vector3 ExternalForces = Vector3.zero;
+
+    [SerializeField] private WeaponType myWeaponType;
+    protected EnemyState currentEnemyState = EnemyState.Idle;
+
+    [SerializeField] protected String ObstacleLayerName = "Obstacle";
 
     public void AddExternalForce(Vector3 ExternalForce)
     {
@@ -59,7 +92,7 @@ public class SimpleMovement : MonoBehaviour
 
         // Si esta colisión es contra alguien que NO es un obstáculo (no tiene la Layer Obstacle),
         // entonces, no hagas nada.
-        if (other.gameObject.layer != LayerMask.NameToLayer("Obstacle"))
+        if (other.gameObject.layer != LayerMask.NameToLayer("ObstacleLayerName"))
         {
             return;
         }
@@ -99,6 +132,16 @@ public class SimpleMovement : MonoBehaviour
         //Vector3 PosToTarget = PuntaMenosCola(targetGameObject.transform.position, transform.position); //seek
         // Vector3 PosToTarget = -PuntaMenosCola(targetGameObject.transform.position, transform.position);  // FLEE
         //velocity += PosToTarget.normalized * maxAcceleration * Time.deltaTime;
+
+        switch (myWeaponType)
+        {
+            case WeaponType.Weak:
+                // Atacar con el arma weak
+                break;
+            case WeaponType.Normal:
+                // atacar con el arma Normal.
+                break;
+        }
 
         if (targetGameObject == null)
         {
@@ -141,12 +184,12 @@ public class SimpleMovement : MonoBehaviour
         }*/
     }
 
-void PerseguirJugador()
+    /*void PerseguirJugador()
     {
         if (targetGameObject != null)
         {
             Vector3 PosToTarget = PuntaMenosCola(targetGameObject.transform.position, transform.position);
-            
+
             velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
 
             transform.position += velocity * Time.deltaTime;
@@ -156,16 +199,16 @@ void PerseguirJugador()
     void DetenerMovimiento()
     {
         velocity = Vector3.zero;
-    }
+    }*/
 
-    Vector3 PredictPosition(Vector3 InitialPosition, Vector3 Velocity, float TimePrediction)
+    protected Vector3 PredictPosition(Vector3 InitialPosition, Vector3 Velocity, float TimePrediction)
     {
         // Con base en la Velocity dada vamos a calcular en qué posición estará nuestro objeto con posición InitialPosition,
         // tras una cantidad X de tiempo (TimePrediction).
         return InitialPosition + Velocity * TimePrediction;
     }
 
-    float CalculatePredictedTime(float MaxSpeed, Vector3 InitialPosition, Vector3 TargetPosition)
+    protected float CalculatePredictedTime(float MaxSpeed, Vector3 InitialPosition, Vector3 TargetPosition)
     {
         // Primero obtenemos la distancia entre InitialPosition y TargetPosition. 
         // y nos quedamos con la pura magnitud, porque solo queremos saber la distancia.
@@ -198,13 +241,27 @@ void PerseguirJugador()
 
             PursuitTimePrediction = CalculatePredictedTime(maxSpeed, transform.position, targetGameObject.transform.position);
 
-            // Primero predigo dónde va a estar mi objetivo
+            // Predecir dónde va a estar mi objetivo
             Vector3 PredictedPosition =
                 PredictPosition(targetGameObject.transform.position, currentVelocity, PursuitTimePrediction);
 
             Gizmos.color = Color.red;
             Gizmos.DrawCube(PredictedPosition, Vector3.one);
         }
+    }
+
+    protected Vector3 Pursuit(Vector3 TargetCurrentPosition, Vector3 TargetCurrentVelocity)
+    {
+        PursuitTimePrediction = CalculatePredictedTime(maxSpeed, transform.position, TargetCurrentPosition);
+        // Predecir dónde va a estar mi objetivo
+        Vector3 PredictedPosition =
+            PredictPosition(TargetCurrentPosition, TargetCurrentVelocity, PursuitTimePrediction);
+        // Seek a la posición predicha.
+        return PuntaMenosCola(PredictedPosition, transform.position); // SEEK
+    }
+    protected Vector3 Evade(Vector3 TargetCurrentPosition, Vector3 TargetCurrentVelocity)
+    {
+        return -Pursuit(TargetCurrentPosition, TargetCurrentVelocity);
     }
 
     int RetornarInt()
