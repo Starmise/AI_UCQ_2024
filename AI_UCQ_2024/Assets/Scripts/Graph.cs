@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
+using static UnityEngine.UI.Image;
 
 public class Node
 {
@@ -14,6 +15,7 @@ public class Node
 
     public string Name = "";  // String para claridad, idealmente se usan ints para diferenciar objetos.
     public Node Parent;  // referencia al nodo padre que se genera durante un Pathfinding.
+    public float Priority = float.PositiveInfinity;
 }
 
 public class Edge
@@ -51,9 +53,8 @@ public class Graph : MonoBehaviour
     // Un set es una estructura de datos que no permite repetidos en nuestros grafos,
     // no vamos a querer ni nodos ni aristas repetidas.
 
-    protected HashSet<Node> NodeSet = new HashSet<Node>();
-    protected HashSet<Edge> EdgeSet = new HashSet<Edge>();
-
+    public HashSet<Node> NodeSet = new HashSet<Node>();
+    public HashSet<Edge> EdgeSet = new HashSet<Edge>();
 
     // Start is called before the first frame update
     void Start()
@@ -345,6 +346,21 @@ public class Graph : MonoBehaviour
         return false;
     }
 
+    public List<Edge> GetEdges(Node node)
+    {
+        List<Edge> connectedEdges = new List<Edge>();
+
+        foreach (Edge edge in EdgeSet)
+        {
+            if (edge.A == node || edge.B == node)
+            {
+                connectedEdges.Add(edge);
+            }
+        }
+
+        return connectedEdges;
+    }
+
     void FuncionRecursiva(int Counter)
     {
         Debug.Log("Hola n�mero: " + Counter);
@@ -352,7 +368,6 @@ public class Graph : MonoBehaviour
             return;
         FuncionRecursiva(Counter + 1);
     }
-
     // MyArray [0, 1, 2, 3, 4...]
 
     // MyStack [0]
@@ -366,3 +381,5 @@ public class Graph : MonoBehaviour
     // 0
     // Last in, First out
 }
+
+
