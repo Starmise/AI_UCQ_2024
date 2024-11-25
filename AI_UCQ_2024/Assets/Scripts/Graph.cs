@@ -1,21 +1,60 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using static Node;
 using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 using static UnityEngine.UI.Image;
 
 public class Node
 {
-    public Node(string inName)
+    public enum NodePriority
+    {
+        BestFirst,
+        Djikstra,
+        AStar
+    }
+
+    public Node(string inName, Vector3 inCoords)
     {
         Name = inName;
         Parent = null;
+        Coords = inCoords;
     }
 
     public string Name = "";  // String para claridad, idealmente se usan ints para diferenciar objetos.
     public Node Parent;  // referencia al nodo padre que se genera durante un Pathfinding.
-    public float Priority = float.PositiveInfinity;
+    public float DistancePriority = Single.PositiveInfinity;
+    public float Weight = 1;  // este uno porque queremos que cada paso al menos nos cueste 1, para que el algoritmo funcione.
+    public float TotalWeight = Single.PositiveInfinity;
+    public float AccumulatedWeight = Single.PositiveInfinity;
+    public float AccumulatedPlusDistance = Single.PositiveInfinity;
+
+    public Vector3 Coords;
+    // Nos da la prioridad (heurística) respecto a la pura distancia entre este nodo y otro nodo
+
+    public float GetPriority(NodePriority inPriority)
+    {
+        switch (inPriority)
+        {
+            case NodePriority.BestFirst:
+                return DistancePriority;
+            case NodePriority.Djikstra:
+                return AccumulatedWeight;
+            case NodePriority.AStar:
+                return AccumulatedPlusDistance;
+            default:
+                return 0.0f;
+        }
+    }
+
+    public float GetDistance(Node otherNode)
+    {
+        // Ahorita dijimos que va a hacer un teorema de Pitágoras entre las coordenadas de ambos nodos.
+        DistancePriority = Vector3.Distance(Coords, otherNode.Coords);
+        return DistancePriority;
+    }
 }
 
 public class Edge
@@ -56,19 +95,22 @@ public class Graph : MonoBehaviour
     public HashSet<Node> NodeSet = new HashSet<Node>();
     public HashSet<Edge> EdgeSet = new HashSet<Edge>();
 
+    [SerializeField]
+    private Transform[] NodePositions = new Transform[8];
+
     // Start is called before the first frame update
     void Start()
     {
         // Vamos a llenar nuestros sets de nodos y aristas.
         // Comenzamos creando todos los nodos, porque las aristas necesitan que ya existan los nodos.
-        Node NodeA = new Node("A");
-        Node NodeB = new Node("B");
-        Node NodeC = new Node("C");
-        Node NodeD = new Node("D");
-        Node NodeE = new Node("E");
-        Node NodeF = new Node("F");
-        Node NodeG = new Node("G");
-        Node NodeH = new Node("H");
+        Node NodeA = new Node("A", NodePositions[0].position);
+        Node NodeB = new Node("B", NodePositions[1].position);
+        Node NodeC = new Node("C", NodePositions[2].position);
+        Node NodeD = new Node("D", NodePositions[3].position);
+        Node NodeE = new Node("E", NodePositions[4].position);
+        Node NodeF = new Node("F", NodePositions[5].position);
+        Node NodeG = new Node("G", NodePositions[6].position);
+        Node NodeH = new Node("H", NodePositions[7].position);
 
         NodeSet.Add(NodeA);
         NodeSet.Add(NodeB);
@@ -99,27 +141,200 @@ public class Graph : MonoBehaviour
         List<Node> PathToGoalDFS = new List<Node>();
 
         // OJO: no olviden poner el out antes de los parámetros que son de salida.
-        if (DFS(NodeA, NodeH, out PathToGoalDFS))
+        if (Djikstra(NodeA, NodeH, out PathToGoalDFS))
         {
-            Debug.Log("ITERATIVO: Sí hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
+            Debug.Log("Djikstra: Sí hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
         }
         else
         {
-            Debug.Log("ITERATIVO: No hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
+            Debug.Log("Djikstra: No hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
+        }
+        foreach (Node node in NodeSet)
+        {
+            if (node.Parent != null)
+            {
+                Debug.Log(" Nodo: " + node.Name + " su total weight = " + node.AccumulatedWeight + ", hijo de nodo: " + node.Parent.Name);
+            }
+            else
+            {
+                Debug.Log(" Nodo: " + node.Name + " su total weight = " + node.AccumulatedWeight + ", y es el origen.");
+            }
         }
 
         ResetNodes(NodeSet);
 
-        if (RecursiveDFS(NodeA, NodeH))
-        {
-            Debug.Log("Sí hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
-        }
-        else
-        {
-            Debug.Log("No hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
-        }
+        //if (RecursiveDFS(NodeA, NodeH))
+        //{
+        //    Debug.Log("Sí hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
+        //}
+        //else
+        //{
+        //    Debug.Log("No hay camino del nodo: " + NodeA.Name + " hacia el nodo: " + NodeH.Name);
+        //}
 
         // FuncionRecursiva(0);  // comentada para que no truene ahorita.
+    }
+
+    bool AStar(Node Origin, Node Goal, out List<Node> PathToGoal)
+    {
+        PathToGoal = new List<Node>(); // Lo inicializamos en 0 por defecto por si no encontramos ningún camino.
+
+        // Nodos cerrados es: ya no se tocan, solo sirven para checar si un nodo ya está cerrado o no.
+        HashSet<Node> closedNodesSet = new HashSet<Node>();
+
+        // Nodos Abiertos es: si un nodo está abierto, es porque todavía no está cerrado, entonces hay que cerrarlo, y para hacerlo
+        // hay que hacerle todo lo necesario, que en este caso es meter a todos sus vecinos posibles a la lista de nodos abiertos.
+        PriorityQueue openNodesPriorityQueue = new PriorityQueue();
+
+        // Es importante que el origin tenga 
+        // Origin.Weight = 0; // por ahora podemos omitir este pasito. Pero en cada caso puede cambiar.
+        Origin.AccumulatedWeight = Origin.Weight;
+        openNodesPriorityQueue.Insert(Origin, Origin.AccumulatedWeight, NodePriority.Djikstra);
+
+        Node CurrentNode = null;
+
+        // El ciclo sigue hasta que A) lleguemos a la meta o B) no haya más nodos abiertos.
+        while (openNodesPriorityQueue.Count() > 0)
+        {
+            CurrentNode = openNodesPriorityQueue.Dequeue();
+            closedNodesSet.Add(CurrentNode); // lo metemos a la lista cerrada en cuanto lo sacamos de la lista abierta.
+
+            // Ya sabemos que en cuanto lleguemos a la meta nos podemos salir de TODA la función, no solo del while, 
+            // entonces podemos hacer eso.
+            if (CurrentNode == Goal)
+            {
+                return true;
+            }
+
+            // Si no se ha cumplido ninguna de esas condiciones, 
+            List<Node> Neighbors = GetNeighbors(CurrentNode);
+
+            // Ahora revisamos cuáles ya están cerrados, abiertos, o desconocidos, y hacer lo que corresponda con cada uno de ellos.
+            foreach (Node neighbor in Neighbors)
+            {
+                if (closedNodesSet.Contains(neighbor))
+                    continue; // si ya está en lo cerrados, no hay nada que hacer con él. Nos pasamos al siguiente vecino.
+
+                // Ahora checamos si el vecino ya tiene padre; si sí, checamos si el peso total de neighbor 
+                // es mejor que si currentNode fuera su padre (es decir, con el currentNode.AccumulatedWeight).
+                if (neighbor.Parent != null)
+                {
+                    if (neighbor.AccumulatedWeight > neighbor.Weight + CurrentNode.AccumulatedWeight)
+                    {
+                        // Si sí es un mejor camino, entonces le actualizamos al neighbor su parent y su total weight.
+                        // Primero lo sacamos de la lista.
+                        openNodesPriorityQueue.Remove(neighbor);
+
+                        // Y ahora hay que cambiarle su lugar en la lista Abierta.
+                        // Este proceso se realiza abajo, como si no hubiera tenido el parent.
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+                neighbor.Parent = CurrentNode;
+                neighbor.AccumulatedWeight = neighbor.Weight + CurrentNode.AccumulatedWeight;
+
+                // Le decimos: este es tu valor de heurística (distance)
+                neighbor.GetDistance(Goal);  // esta función ya le setea su Distance internamente.
+
+                // Y este es tu valor "f", que es la heurística más el peso acumulado.
+                neighbor.AccumulatedPlusDistance = neighbor.AccumulatedWeight + neighbor.DistancePriority;
+
+                // Finalmente, lo metemos en la fila de prioridad (lista abierta) usando el valor F como prioridad.
+
+                // A los que no estén en ninguna de las tres condiciones anteriores, a esos sí los podemos meter a la lista 
+                // calculando su distancia (heurística) respecto al nodo Goal, y los hacemos hijos de este CurrentNode.
+                openNodesPriorityQueue.Insert(neighbor, neighbor.AccumulatedPlusDistance, NodePriority.AStar);
+            }
+        }
+
+        return false;
+    }
+
+    // Cosas costosas de Djikstra:
+    // 1) Si tenemos que cambiarle el valor a un nodo que ya está en la lista bierta, tenemos que buscar en nuestra lista ligada, quitar el nodo
+    // y luego volverlo a insertar.
+    // digamos que tenemos 1 millón de elementos
+    // Penúltimo=999999, último 1000000
+    // cambiando el último de 1,000,000 a 999,998.5
+    // en el peor de los casos nos costó 2*n
+
+    bool Djikstra(Node Origin, Node Goal, out List<Node> PathToGoal)
+    {
+        PathToGoal = new List<Node>(); // Lo inicializamos en 0 por defecto por si no encontramos ningún camino.
+
+        // Nodos cerrados es: ya no se tocan, solo sirven para checar si un nodo ya está cerrado o no.
+        HashSet<Node> closedNodesSet = new HashSet<Node>();
+
+        // Nodos Abiertos es: si un nodo está abierto, es porque todavía no está cerrado, entonces hay que cerrarlo, y para hacerlo
+        // hay que hacerle todo lo necesario, que en este caso es meter a todos sus vecinos posibles a la lista de nodos abiertos.
+        PriorityQueue openNodesPriorityQueue = new PriorityQueue();
+
+        // Es importante que el origin tenga 
+        // Origin.Weight = 0; // por ahora podemos omitir este pasito. Pero en cada caso puede cambiar.
+        Origin.AccumulatedWeight = Origin.Weight;
+        openNodesPriorityQueue.Insert(Origin, Origin.AccumulatedWeight, NodePriority.Djikstra);
+
+        Node CurrentNode = null;
+
+        // El ciclo sigue hasta que A) lleguemos a la meta o B) no haya más nodos abiertos.
+        while (openNodesPriorityQueue.Count() > 0)
+        {
+            CurrentNode = openNodesPriorityQueue.Dequeue();
+            closedNodesSet.Add(CurrentNode); // lo metemos a la lista cerrada en cuanto lo sacamos de la lista abierta.
+
+            // Ya sabemos que en cuanto lleguemos a la meta nos podemos salir de TODA la función, no solo del while, 
+            // entonces podemos hacer eso.
+            if (CurrentNode == Goal)
+            {
+                return true;
+            }
+
+            // Si no se ha cumplido ninguna de esas condiciones, 
+            List<Node> Neighbors = GetNeighbors(CurrentNode);
+
+            // Ahora revisamos cuáles ya están cerrados, abiertos, o desconocidos, y hacer lo que corresponda con cada uno de ellos.
+            foreach (Node neighbor in Neighbors)
+            {
+                if (closedNodesSet.Contains(neighbor))
+                    continue; // si ya está en lo cerrados, no hay nada que hacer con él. Nos pasamos al siguiente vecino.
+
+                // Ahora checamos si el vecino ya tiene padre; si sí, checamos si el peso total de neighbor 
+                // es mejor que si currentNode fuera su padre (es decir, con el currentNode.AccumulatedWeight).
+                if (neighbor.Parent != null)
+                {
+                    if (neighbor.AccumulatedWeight > neighbor.Weight + CurrentNode.AccumulatedWeight)
+                    {
+                        // Si sí es un mejor camino, entonces le actualizamos al neighbor su parent y su total weight.
+                        // Primero lo sacamos de la lista.
+                        openNodesPriorityQueue.Remove(neighbor);
+
+                        // Y ahora hay que cambiarle su lugar en la lista Abierta.
+                        // Este proceso se realiza abajo, como si no hubiera tenido el parent.
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+                // Si el nodo ya tiene Parent quiere decir que está en la lista abierta.
+                //if (openNodesPriorityQueue.Contains(neighbor))
+                //    continue;
+
+                neighbor.Parent = CurrentNode;
+                neighbor.AccumulatedWeight = neighbor.Weight + CurrentNode.AccumulatedWeight;
+
+                // A los que no estén en ninguna de las tres condiciones anteriores, a esos sí los podemos meter a la lista 
+                // calculando su distancia (heurística) respecto al nodo Goal, y los hacemos hijos de este CurrentNode.
+                openNodesPriorityQueue.Insert(neighbor, neighbor.AccumulatedWeight, NodePriority.Djikstra);
+            }
+        }
+
+        return false;
     }
 
     // No recibe nada porque ya los tenemos guardados en el NodeSet

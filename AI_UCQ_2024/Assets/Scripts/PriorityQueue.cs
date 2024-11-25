@@ -1,16 +1,22 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static Node;
 
 public class PriorityQueue
 {
     private LinkedList<Node> NodeList;
 
+    public PriorityQueue()
+    {
+        NodeList = new LinkedList<Node>();
+    }
+
     // Queremos insertar/quitar elementos según su prioridad, 
     // de manera que vayan quedando siempre ordenados.
 
     // Función de meter elementos se debe de llamar "insertar"
-    public void Insert(Node inNode, float Priority)
+    public void Insert(Node inNode, float Priority, NodePriority inPriorityType)
     {
         // Primero hay que checar que la NodeList no esté vacía.
         if (NodeList.Count == 0)
@@ -21,19 +27,55 @@ public class PriorityQueue
             return;
         }
 
-        // Debe de buscar la nodo actualmente dentro de la lista cuya prioridad sea más grande que la suya (Priority).
-        // cuando encuentras un nodo con prioridad mayor, es porque este nodo inNode debe de ir antes de él.
         LinkedListNode<Node> currentLinkedNode = NodeList.First;
-        while (currentLinkedNode.Value.Priority < Priority)
+        if (inPriorityType == NodePriority.AStar)
         {
-            // Si se sigue cumpliendo la condición del while, pasa al siguiente nodo de la lista.
-            currentLinkedNode = currentLinkedNode.Next;
-            if (currentLinkedNode == null)
+            while (currentLinkedNode.Value.GetPriority(inPriorityType) < Priority)
             {
-                // Aquí ya se acabaron los elementos, entonces este nodo inNode debe ser el último de la NodeList.
-                NodeList.AddLast(inNode);
-                // Ahora nos salimos de la función porque ya metimos el nodo.
-                return;
+                // Si se sigue cumpliendo la condición del while, pasa al siguiente nodo de la lista.
+                currentLinkedNode = currentLinkedNode.Next;
+                if (currentLinkedNode == null)
+                {
+                    // Aquí ya se acabaron los elementos, entonces este nodo inNode debe ser el último de la NodeList.
+                    NodeList.AddLast(inNode);
+                    // Ahora nos salimos de la función porque ya metimos el nodo.
+                    return;
+                }
+            }
+            while (currentLinkedNode.Value.GetPriority(inPriorityType) == Priority)
+            {
+                if (currentLinkedNode.Value.DistancePriority > Priority)
+                {
+                    NodeList.AddBefore(currentLinkedNode, inNode);
+                    return;
+                }
+
+                // Si se sigue cumpliendo la condición del while, pasa al siguiente nodo de la lista.
+                currentLinkedNode = currentLinkedNode.Next;
+                if (currentLinkedNode == null)
+                {
+                    // Aquí ya se acabaron los elementos, entonces este nodo inNode debe ser el último de la NodeList.
+                    NodeList.AddLast(inNode);
+                    // Ahora nos salimos de la función porque ya metimos el nodo.
+                    return;
+                }
+            }
+
+            NodeList.AddBefore(currentLinkedNode, inNode);
+        }
+        else
+        {
+            while (currentLinkedNode.Value.GetPriority(inPriorityType) <= Priority)
+            {
+                // Si se sigue cumpliendo la condición del while, pasa al siguiente nodo de la lista.
+                currentLinkedNode = currentLinkedNode.Next;
+                if (currentLinkedNode == null)
+                {
+                    // Aquí ya se acabaron los elementos, entonces este nodo inNode debe ser el último de la NodeList.
+                    NodeList.AddLast(inNode);
+                    // Ahora nos salimos de la función porque ya metimos el nodo.
+                    return;
+                }
             }
         }
 
@@ -61,6 +103,11 @@ public class PriorityQueue
 
         // y lo regresamos para hacer lo que necesitemos con este nodo.
         return OutNode;
+    }
+
+    public void Remove(Node inNode)
+    {
+        NodeList.Remove(inNode);
     }
 
     public bool Contains(Node inNode)

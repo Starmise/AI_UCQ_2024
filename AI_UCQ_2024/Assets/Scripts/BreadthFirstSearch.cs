@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class BreadthFirstSearch : MonoBehaviour
 {
+    [SerializeField]
+    private Transform[] NodePositions = new Transform[7];
+
     // Método para ejecutar el BFS
     public bool BFS(Node start, Node goal, out List<Node> path)
     {
@@ -86,13 +89,13 @@ public class BreadthFirstSearch : MonoBehaviour
     {
         // Caso 1: Exitoso (Hay camino)
         Debug.Log("Caso 1: Exitoso");
-        Node H = new Node("H");
-        Node E = new Node("E");
-        Node A = new Node("A");
-        Node B = new Node("B");
-        Node C = new Node("C");
-        Node D = new Node("D");
-        Node F = new Node("F");
+        Node H = new Node("H", NodePositions[0].position);
+        Node E = new Node("E", NodePositions[1].position);
+        Node A = new Node("A", NodePositions[2].position);
+        Node B = new Node("B", NodePositions[3].position);
+        Node C = new Node("C", NodePositions[4].position);
+        Node D = new Node("D", NodePositions[5].position);
+        Node F = new Node("F", NodePositions[6].position);
 
         // Ahora queremos declarar las aristas.
         Edge EdgeHE = new Edge("HE", H, E);
@@ -129,7 +132,7 @@ public class BreadthFirstSearch : MonoBehaviour
 
         Debug.Log("----------------------------------------");
         Debug.Log("Caso 2: Fallido");
-        Node G = new Node("G");
+        Node G = new Node("G", NodePositions[7].position);
 
         Edge Edge2HE = new Edge("HE", H, E);
         Edge Edge2EF = new Edge("EF", E, F);
