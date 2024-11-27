@@ -46,7 +46,7 @@ public class BaseFSM : MonoBehaviour
     public virtual BaseState GetInitialState()
     {
         // Regresa null para que cause error porque la funcion de esta clase padre nunca debe de usarse,
-        // siempre se le debe de hacer un override.
+        // siempre se le debe de hacer un override
         return null;
     }
 }
