@@ -9,6 +9,7 @@ public class MeleeState : BaseState
 
     public enum MeleeSubstate
     {
+        SubstateSelection,
         BasicAttack,
         Dash,
         AreaAttack,

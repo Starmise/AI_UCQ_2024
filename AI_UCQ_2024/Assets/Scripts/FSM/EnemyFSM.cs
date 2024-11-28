@@ -17,7 +17,7 @@ public class EnemyFSM : BaseFSM
     public AlertState AlertState
     { get { return _alertState; } }
 
-    public BaseEnemy Owner;
+    public BaseEnemy Owner; //Contexto
 
 
     public override void Start()

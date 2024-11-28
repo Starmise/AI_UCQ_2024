@@ -11,7 +11,7 @@ public class BaseEnemy : MonoBehaviour
     public float VisionRange;
     public GameObject PlayerRef;
 
-    void Awake()
+    public virtual void Awake()
     {
         PlayerRef = GameObject.Find("Player");
         if (PlayerRef == null)
